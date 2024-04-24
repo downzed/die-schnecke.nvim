@@ -17,4 +17,11 @@ M.load = function(user_config)
   return config
 end
 
+M.set_notes_dir = function()
+  local notes_dir = vim.fn.expand(M.load()["path"])
+  if vim.fn.isdirectory(notes_dir) == 0 then
+    vim.fn.mkdir(notes_dir, 'p')
+  end
+end
+
 return M

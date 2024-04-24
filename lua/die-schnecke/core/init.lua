@@ -1,5 +1,6 @@
 local n = require("nui-components")
-local utils = require("die-schnecke.core.utils")
+local spinner_formats = require("nui-components.utils.spinner-formats")
+local notes = require("die-schnecke.core.notes").get()
 
 local M = {
   data = {},
@@ -9,49 +10,29 @@ local M = {
   -- win_id = nil
 }
 
-local coreState = n.create_signal({
-  win_id = nil
-})
-
-M.set_notes_dir = function()
-  local notes_dir = vim.fn.expand(utils.get_config("path"))
-  if vim.fn.isdirectory(notes_dir) == 0 then
-    vim.fn.mkdir(notes_dir, 'p')
-  end
-end
-
-M.load_notes = function()
-  local notes_dir = vim.fn.expand(utils.get_config("path"))
-  local items = utils.fetch_dir_items(notes_dir)
-
-  for _, item in ipairs(items) do
-    if item.type == "file" then
-      table.insert(M.data, item.title)
-    end
-  end
-end
-
-
 M.setupRenderer = function()
-  local ren = n.create_renderer({
+  local renderer = n.create_renderer({
     width = 60,
-    height = 10,
-    on_mount = function()
-      P("Mounted")
-      M.is_open = true
-      coreState.win_id = vim.api.nvim_get_current_win()
-    end,
-    on_unmount = function()
-      P("Unmounted")
-      M.is_open = false
-    end
+    height = 4,
+    -- position = 100
   })
 
-  M.renderer = ren
+
+
+  renderer:on_mount(function()
+    M.is_open = true
+    --   M.win_id = vim.api.nvim_get_current_win()
+  end)
+
+  renderer:on_unmount(function()
+    M.is_open = false
+    M.renderer = nil
+  end)
+
+  M.renderer = renderer
 end
 
 M.setupContent = function()
-  local notes = M.data
   local items = {}
 
   for _, noteTitle in ipairs(notes) do
@@ -59,35 +40,77 @@ M.setupContent = function()
   end
 
 
+  -- local signal = n.create_signal({
+  --   selected = items[1].id or {},
+  -- })
+
+  -- local select_list = n.select({
+  --   border_label = "Quick Notes",
+  --   autofocus = true,
+  --   selected = signal.selected,
+  --   data = items,
+
+  --   on_select = function(node)
+  --     print(node.id)
+  --     signal.selected = node.id
+  --   end,
+
+  --   prepare_node = function(is_selected, node)
+  --     -- print("Node: " .. node.id)
+  --     -- print("Is selected: " .. tostring(is_selected))
+  --     if is_selected then
+  --       return node.id .. " ✓"
+  --     end
+
+  --     return node.id
+  --   end,
+  -- })
   local signal = n.create_signal({
-    selected = items[1].id or {},
+    is_loading = false,
+    text = "nui.components",
   })
 
-  local select_list = n.select({
-    border_label = "Quick Notes",
-    autofocus = true,
-    selected = signal.selected,
-    data = items,
-
-    on_select = function(node)
-      print(node.id)
-      signal.selected = node.id
-    end,
-
-    prepare_node = function(is_selected, node)
-      -- print("Node: " .. node.id)
-      -- print("Is selected: " .. tostring(is_selected))
-      if is_selected then
-        return node.id .. " ✓"
-      end
-
-      return node.id
-    end,
-  })
-
-  M.content = function()
-    return select_list
+  local body = function()
+    return n.rows(
+      n.columns(
+        { flex = 0 },
+        n.text_input({
+          id = "text-input",
+          autofocus = true,
+          flex = 1,
+          max_lines = 1,
+        }),
+        n.gap(1),
+        n.button({
+          label = "Send",
+          hidden = signal.is_loading,
+          padding = {
+            top = 1,
+          },
+          on_press = function()
+            signal.is_loading = true
+            vim.defer_fn(function()
+              local ref = M.renderer:get_component_by_id("text-input")
+              signal.is_loading = false
+              signal.text = ref:get_current_value()
+            end, 2000)
+          end,
+        }),
+        n.spinner({
+          is_loading = signal.is_loading,
+          frames = spinner_formats.pipe,
+          hidden = not signal.is_loading,
+        })
+      ),
+      n.paragraph({
+        lines = signal.text,
+        align = "center",
+        is_focusable = false,
+      })
+    )
   end
+
+  M.content = body
 end
 
 M.initialize = function()

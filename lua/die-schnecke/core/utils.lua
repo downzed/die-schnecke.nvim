@@ -1,16 +1,15 @@
 local plenary = require('plenary.scandir')
 local config = require('die-schnecke.core.config')
 
-_G.P = function(val)
+P = function(val)
   print(vim.inspect(val))
   return val
 end
 
-_G.ClearCache = function()
-  package["die-schnecke"] = nil
-  require("die-schnecke").setup()
+R = function(name)
+  package[name] = nil
+  return require(name)
 end
-
 
 local M = {}
 

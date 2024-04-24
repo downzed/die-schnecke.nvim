@@ -6,14 +6,16 @@ _G.DieSchneckeLoaded = true
 
 local core = require('die-schnecke.core.init')
 local config = require('die-schnecke.core.config')
+local notes = require('die-schnecke.core.notes')
 
 local api = vim.api
 local M = {}
 
 M.setup = function(opts)
   config.load(opts)
-  core.set_notes_dir()
-  core.load_notes()
+  config.set_notes_dir()
+  notes.load()
+  -- core.load_notes()
   core.initialize()
 
   local desc = 'Toggle Die Schnecke!'
