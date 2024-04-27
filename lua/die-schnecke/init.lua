@@ -7,14 +7,15 @@ _G.DieSchneckeLoaded = true
 local core = require('die-schnecke.core.init')
 local config = require('die-schnecke.core.config')
 local notes = require('die-schnecke.core.notes')
+local ai = require('die-schnecke.core.ai')
 
 local api = vim.api
 local M = {}
 
 M.setup = function(opts)
   config.load(opts)
-  config.set_notes_dir()
-  notes.load()
+  -- config.set_notes_dir()
+  -- notes.load()
   -- core.load_notes()
   core.initialize()
 
@@ -41,5 +42,6 @@ M.setup = function(opts)
 end
 
 M.open = core.open
+M.chat = ai.chat
 
 return M

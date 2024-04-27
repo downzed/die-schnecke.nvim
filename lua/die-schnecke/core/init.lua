@@ -1,6 +1,5 @@
 local n = require("nui-components")
-local spinner_formats = require("nui-components.utils.spinner-formats")
-local notes = require("die-schnecke.core.notes").get()
+local ai = require("die-schnecke.core.ai")
 
 local M = {
   data = {},
@@ -10,14 +9,26 @@ local M = {
   -- win_id = nil
 }
 
-M.setupRenderer = function()
+local is_ollama_running = function()
+  local command = "ps aux | grep 'ollama serve' | grep -v grep"
+  local handle = io.popen(command)
+
+  if handle == nil then return end
+
+  local result = handle:read("*a")
+  handle:close()
+
+  if result == "" then return false end -- "Ollama serve is not running."
+  return true                           -- "Ollama serve is running."
+end
+
+M.setup_renderer = function()
   local renderer = n.create_renderer({
     width = 60,
-    height = 4,
-    -- position = 100
+    height = 3,
   })
 
-
+  local bufnr = vim.api.nvim_create_buf(false, true)
 
   renderer:on_mount(function()
     M.is_open = true
@@ -29,93 +40,77 @@ M.setupRenderer = function()
     M.renderer = nil
   end)
 
-  M.renderer = renderer
-end
-
-M.setupContent = function()
-  local items = {}
-
-  for _, noteTitle in ipairs(notes) do
-    table.insert(items, n.option(noteTitle, { id = noteTitle })) -- Use the note title as the ID
-  end
-
-
-  -- local signal = n.create_signal({
-  --   selected = items[1].id or {},
-  -- })
-
-  -- local select_list = n.select({
-  --   border_label = "Quick Notes",
-  --   autofocus = true,
-  --   selected = signal.selected,
-  --   data = items,
-
-  --   on_select = function(node)
-  --     print(node.id)
-  --     signal.selected = node.id
-  --   end,
-
-  --   prepare_node = function(is_selected, node)
-  --     -- print("Node: " .. node.id)
-  --     -- print("Is selected: " .. tostring(is_selected))
-  --     if is_selected then
-  --       return node.id .. " ✓"
-  --     end
-
-  --     return node.id
-  --   end,
-  -- })
   local signal = n.create_signal({
-    is_loading = false,
-    text = "nui.components",
+    chat = "",
+    is_preview_visible = false,
   })
 
   local body = function()
     return n.rows(
-      n.columns(
-        { flex = 0 },
-        n.text_input({
-          id = "text-input",
-          autofocus = true,
-          flex = 1,
-          max_lines = 1,
-        }),
-        n.gap(1),
-        n.button({
-          label = "Send",
-          hidden = signal.is_loading,
-          padding = {
-            top = 1,
-          },
-          on_press = function()
-            signal.is_loading = true
-            vim.defer_fn(function()
-              local ref = M.renderer:get_component_by_id("text-input")
-              signal.is_loading = false
-              signal.text = ref:get_current_value()
-            end, 2000)
-          end,
-        }),
-        n.spinner({
-          is_loading = signal.is_loading,
-          frames = spinner_formats.pipe,
-          hidden = not signal.is_loading,
-        })
-      ),
-      n.paragraph({
-        lines = signal.text,
-        align = "center",
-        is_focusable = false,
+      n.text_input({
+        border_label = "Chat",
+        autofocus = true,
+        wrap = true,
+        on_change = function(value)
+          signal.chat = value
+        end,
+      }),
+      n.buffer({
+        id = "preview",
+        flex = 1,
+        buf = bufnr,
+        autoscroll = true,
+        border_label = "Preview",
+        hidden = signal.is_preview_visible:negate(),
+        filetype = 'markdown'
       })
     )
   end
 
-  M.content = body
+  renderer:add_mappings({
+    {
+      mode = { "n" },
+      key = "<CR>",
+      handler = function()
+        -- local gen = require("gen")
+        local state = signal:get_value()
+
+        renderer:set_size({ height = 20 })
+        signal.is_preview_visible = true
+
+        renderer:schedule(function()
+          -- local win = renderer:get_component_by_id("preview").winid
+          -- P(win)
+          local data = ai.chat(state.chat)
+
+          if not is_ollama_running() then
+            vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, { "please run ollama serve" }) -- Insert data into the buffer
+            return
+          end
+          if data == nil then return end
+
+          -- You may want to set some buffer-specific options here
+          -- vim.api.nvim_buf_set_option(bufnr, 'buftype', 'nofile') -- Non-file buffer
+          vim.api.nvim_buf_set_option(bufnr, 'bufhidden', 'wipe') -- Wipe buffer when hidden
+          vim.api.nvim_buf_set_option(bufnr, 'swapfile', false)   -- Disable swapfile for this buffer
+
+          vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, data)   -- Insert data into the buffer
+
+          -- gen.float_win = renderer:get_component_by_id("preview").winid
+          -- gen.result_buffer = buf
+          -- gen.exec({ prompt = state.chat })
+        end)
+      end,
+    },
+  })
+
+  renderer:render(body)
+  M.renderer = renderer
 end
 
 M.initialize = function()
-  M.setupRenderer()
-  M.setupContent()
+  ai.load_llama()
+  M.setup_renderer()
 end
 
 M.open = function()
@@ -123,8 +118,8 @@ M.open = function()
     return
   end
 
-  M.initialize()
-  M.renderer:render(M.content)
+  -- M.initialize()
+  M.setup_renderer()
 end
 
 return M
