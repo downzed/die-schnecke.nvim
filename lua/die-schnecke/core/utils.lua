@@ -6,12 +6,32 @@ P = function(val)
   return val
 end
 
-R = function(name)
+function R(name)
   package[name] = nil
+  require "plenary.reload" (name)
   return require(name)
 end
 
 local M = {}
+
+M.get_visual_selection = function()
+  local s_start = vim.fn.getpos("'<")
+  local s_end = vim.fn.getpos("'>")
+  local n_lines = math.abs(s_end[2] - s_start[2]) + 1
+  local lines = vim.api.nvim_buf_get_lines(0, s_start[2] - 1, s_end[2], false)
+
+  if vim.tbl_isempty(lines) then
+    return
+  end
+
+  lines[1] = string.sub(lines[1], s_start[3], -1)
+  if n_lines == 1 then
+    lines[n_lines] = string.sub(lines[n_lines], 1, s_end[3] - s_start[3] + 1)
+  else
+    lines[n_lines] = string.sub(lines[n_lines], 1, s_end[3])
+  end
+  return table.concat(lines, '\n')
+end
 
 M.get_file = function(path, mode)
   return io.open(path, mode)
@@ -40,31 +60,10 @@ M.get_config = function(key)
   return config[key] or config.load()[key]
 end
 
+M.encode_to_json = function(data)
+  local json = vim.fn.json_encode(data)
+  json = vim.fn.shellescape(json)
+  return json
+end
+
 return M
-
-
-
---[[
-  local api = vim.api
-  local M = { }
-
-  M.init = function()
-    M.setup_keymaps()
-  end
-
-  M.cleanup = function()
-    M.buf = nil
-    M.opts = nil
-  end
-
-  M.setup_keymaps = function()
-    local mappings = config.get("mappings")
-    for k, v in pairs(mappings) do
-      api.nvim_set_keymap('n', k, ':lua require"die-schnecke".' .. v .. '<cr>', {
-        nowait = true, noremap = true, silent = true
-      })
-    end
-  end
-
-  return M
---]]

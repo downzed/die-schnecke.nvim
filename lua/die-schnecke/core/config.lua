@@ -8,6 +8,11 @@ M.defaults = {
   },
   path = '~/die-schnecke.notes',
   max_items = 10,
+  llama = {
+    model = "Ziggi",
+    -- stream = false,
+    port  = "11434"
+  }
 }
 
 M.load = function(user_config)

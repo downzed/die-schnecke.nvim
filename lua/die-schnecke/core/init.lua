@@ -1,12 +1,18 @@
 local n = require("nui-components")
+local spinner_formats = require("nui-components.utils.spinner-formats")
+
 local ai = require("die-schnecke.core.ai")
+local utils = require("die-schnecke.core.utils")
 
 local M = {
-  data = {},
+  -- data = {
+  --   stream = false,
+  --   model = "Bob",
+  -- },
   renderer = {},
   content = nil,
   is_open = false,
-  -- win_id = nil
+  signal = {},
 }
 
 local is_ollama_running = function()
@@ -18,11 +24,13 @@ local is_ollama_running = function()
   local result = handle:read("*a")
   handle:close()
 
-  if result == "" then return false end -- "Ollama serve is not running."
-  return true                           -- "Ollama serve is running."
+  if result == "" then return false end
+  return true
 end
 
-M.setup_renderer = function()
+local model_name = utils.get_config("llama").model
+
+M.create_window = function()
   local renderer = n.create_renderer({
     width = 60,
     height = 3,
@@ -32,7 +40,6 @@ M.setup_renderer = function()
 
   renderer:on_mount(function()
     M.is_open = true
-    --   M.win_id = vim.api.nvim_get_current_win()
   end)
 
   renderer:on_unmount(function()
@@ -40,29 +47,51 @@ M.setup_renderer = function()
     M.renderer = nil
   end)
 
+
   local signal = n.create_signal({
     chat = "",
     is_preview_visible = false,
+    is_loading = false,
+    model_name = model_name or ""
   })
 
+  M.signal = signal
+
   local body = function()
-    return n.rows(
-      n.text_input({
-        border_label = "Chat",
-        autofocus = true,
-        wrap = true,
-        on_change = function(value)
-          signal.chat = value
-        end,
-      }),
+    return n.box({ flex = 1, direction = "column" },
+      n.rows(
+        { size = 3 },
+        n.columns(
+          { flex = 2 },
+          n.text_input({
+            flex = 1,
+            border_label = "Message",
+            autofocus = true,
+            wrap = true,
+            max_lines = 4,
+            on_change = function(value)
+              signal.chat = value
+            end,
+          }),
+          n.gap({ size = 2 }),
+          n.spinner({
+            padding = {
+              top = 1,
+            },
+            is_loading = signal.is_loading:negate(),
+            frames = spinner_formats.shark,
+          })
+        )
+      ),
       n.buffer({
         id = "preview",
         flex = 1,
         buf = bufnr,
+        autofocus = true,
         autoscroll = true,
-        border_label = "Preview",
+        border_label = "# Chat with " .. (model_name or "llama"),
         hidden = signal.is_preview_visible:negate(),
-        filetype = 'markdown'
+        filetype = "markdown",
       })
     )
   end
@@ -72,33 +101,25 @@ M.setup_renderer = function()
       mode = { "n" },
       key = "<CR>",
       handler = function()
-        -- local gen = require("gen")
         local state = signal:get_value()
+
+        if not is_ollama_running() then
+          return
+        end
 
         renderer:set_size({ height = 20 })
         signal.is_preview_visible = true
 
         renderer:schedule(function()
-          -- local win = renderer:get_component_by_id("preview").winid
-          -- P(win)
-          local data = ai.chat(state.chat)
+          ai.result_bufnr = bufnr
+          ai.prompt_winid = renderer:get_component_by_id("preview").winid
 
-          if not is_ollama_running() then
-            vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, { "please run ollama serve" }) -- Insert data into the buffer
-            return
-          end
-          if data == nil then return end
+          vim.api.nvim_buf_set_option(bufnr, 'bufhidden', 'wipe')    -- Wipe buffer when hidden
+          vim.api.nvim_buf_set_option(bufnr, 'swapfile', false)      -- Disable swapfile for this buffer
+          vim.api.nvim_buf_set_option(bufnr, 'filetype', 'markdown') -- make this buffer markdown
+          -- vim.cmd("setlocal rnu")
 
-          -- You may want to set some buffer-specific options here
-          -- vim.api.nvim_buf_set_option(bufnr, 'buftype', 'nofile') -- Non-file buffer
-          vim.api.nvim_buf_set_option(bufnr, 'bufhidden', 'wipe') -- Wipe buffer when hidden
-          vim.api.nvim_buf_set_option(bufnr, 'swapfile', false)   -- Disable swapfile for this buffer
-
-          vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, data)   -- Insert data into the buffer
-
-          -- gen.float_win = renderer:get_component_by_id("preview").winid
-          -- gen.result_buffer = buf
-          -- gen.exec({ prompt = state.chat })
+          ai.exec(state.chat)
         end)
       end,
     },
@@ -109,17 +130,23 @@ M.setup_renderer = function()
 end
 
 M.initialize = function()
-  ai.load_llama()
-  M.setup_renderer()
+  ai.run_llama_server()
 end
 
-M.open = function()
+M.open = function(with_selection)
   if M.is_open then
     return
   end
 
-  -- M.initialize()
-  M.setup_renderer()
+  if with_selection then
+    local current_text = utils.get_visual_selection() or ""
+    if current_text ~= "" then
+      print("Current text: " .. current_text)
+    end
+    return
+  end
+
+  M.create_window()
 end
 
 return M
