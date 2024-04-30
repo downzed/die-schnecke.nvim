@@ -9,9 +9,9 @@ M.defaults = {
   path = '~/die-schnecke.notes',
   max_items = 10,
   llama = {
-    model = "Ziggi",
-    -- stream = false,
-    port  = "11434"
+    model  = "GemmaOne",
+    stream = true,
+    port   = "11434"
   }
 }
 
@@ -28,5 +28,7 @@ M.set_notes_dir = function()
     vim.fn.mkdir(notes_dir, 'p')
   end
 end
+
+M.map = vim.keymap.set
 
 return M

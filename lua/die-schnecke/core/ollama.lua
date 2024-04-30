@@ -1,13 +1,13 @@
 local _api = vim.api
 local utils = require("die-schnecke.core.utils")
+local write_to_buffer = utils.write_to_buffer
 
 local M = {
-  current_response = nil,
   result_bufnr = nil,
   prompt_winid = nil,
 }
 
-local model_exist = function(model)
+local get_is_model_exist = function(model)
   for _, m in ipairs(M.models) do
     if m == model then
       return true
@@ -16,29 +16,7 @@ local model_exist = function(model)
   return false
 end
 
-local write_to_buffer = function(lines)
-  if M.result_bufnr == nil or not vim.api.nvim_buf_is_valid(M.result_bufnr) then
-    return
-  end
-
-  local all_lines = vim.api.nvim_buf_get_lines(M.result_bufnr, 0, -1, false)
-
-  local last_row = #all_lines
-  local last_row_content = all_lines[last_row]
-  local last_col = string.len(last_row_content)
-
-  local text = table.concat(lines or {}, "\n")
-
-  vim.api.nvim_buf_set_option(M.result_bufnr, "modifiable", true)
-  vim.api.nvim_buf_set_text(M.result_bufnr, last_row - 1, last_col,
-    last_row - 1, last_col, vim.split(text, "\n"))
-
-  -- Move the cursor to the end of the new lines
-  vim.api.nvim_buf_set_option(M.result_bufnr, "modifiable", false)
-end
-
 M.run_llama_server = function()
-  -- running
   local port = utils.get_config("llama").port
   local ok = pcall(io.popen, "ollama serve > /dev/null 2>&1 &")
 
@@ -75,14 +53,11 @@ local process_cmd_result = function(res)
   local job_id = M.job_id
 
   if string.len(res) == 0 or not job_id then return end
-  -- print(vim.inspect(res))
-  -- print(job_id)
 
   local text
   local success, result = pcall(vim.fn.json_decode, res)
 
   if success then
-    -- print(vim.inspect(result))
     if result ~= nil then
       if result.message and result.message.content then
         local content = result.message.content
@@ -97,14 +72,11 @@ local process_cmd_result = function(res)
           })
           -- Clear the buffer as we're done with this sequence of messages
           M.context_buffer = ""
-          write_to_buffer({ "" })
-          write_to_buffer({ "", "====== DONE =====" })
-          write_to_buffer({ "" })
+          write_to_buffer({ "\n", "󰐁", "\n" })
         end
       end
     end
   else
-    -- TODO: stop job
     write_to_buffer({ "", "====== ERROR ====", res, "-------------", "" })
     vim.fn.jobstop(job_id)
   end
@@ -171,20 +143,22 @@ end
 
 M.exec = function(message)
   local llama_config = utils.get_config('llama')
-  local is_model_exist = model_exist(llama_config.model)
+  local is_model_exist = get_is_model_exist(llama_config.model)
 
   if not is_model_exist then
     write_to_buffer({ "󱙑 Model not found: " .. llama_config.model })
     return
   end
 
-  local _local_data = { -- TODO: whould be expended when using context
-    messages = {
-      {
-        role = "user",
-        content = message
-      }
+  local messages = {
+    {
+      role = "user",
+      content = message
     }
+  }
+
+  local _local_data = { -- TODO: hould be expended when using context
+    messages = messages
   }
 
   local data = vim.tbl_deep_extend("force", {}, _local_data, llama_config)
@@ -198,5 +172,6 @@ M.exec = function(message)
 
   run_cmd(cmd)
 end
+
 
 return M
