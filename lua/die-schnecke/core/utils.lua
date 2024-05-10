@@ -134,7 +134,7 @@ end
 
 M.throw_to_left = function(bufnr)
   vim.cmd("vsplit")
-  vim.cmd("vertical resize " .. 37)
+  vim.cmd("vertical resize " .. 38)
 
   -- Move the new split to the far left
   vim.cmd("wincmd H")
@@ -144,6 +144,16 @@ M.throw_to_left = function(bufnr)
     vim.api.nvim_win_set_buf(0, bufnr)
   end
   return vim.api.nvim_get_current_win()
+end
+
+
+M.switch = function(param, t)
+  local case = t[param]
+  if case then
+    return case()
+  end
+  local defaultFn = t["default"]
+  return defaultFn and defaultFn() or nil
 end
 
 return M

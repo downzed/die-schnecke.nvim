@@ -141,7 +141,16 @@ local run_cmd = function(cmd)
       })
 end
 
-M.exec = function(message)
+M.set_context = function(messages)
+  M.context = M.context or {}
+  for _, msg in ipairs(messages) do
+    if msg ~= 0 then
+      table.insert(M.context, { role = "user", content = string.gsub(msg, "\n", "") })
+    end
+  end
+end
+
+M.exec = function(is_debug)
   local llama_config = utils.get_config('llama')
   local is_model_exist = get_is_model_exist(llama_config.model)
 
@@ -150,20 +159,16 @@ M.exec = function(message)
     return
   end
 
-  local messages = {
-    {
-      role = "user",
-      content = message
-    }
-  }
-
-  local _local_data = { -- TODO: hould be expended when using context
-    messages = messages
+  local _local_data = {
+    messages = M.context
   }
 
   local data = vim.tbl_deep_extend("force", {}, _local_data, llama_config)
 
   local json_body = utils.encode_to_json(data)
+
+  if is_debug then P(json_body) end
+
   local port = utils.get_config('llama').port
   local cmd = string.format(
     "curl --silent --no-buffer http://localhost:" .. port .. "/api/chat -d %s",
