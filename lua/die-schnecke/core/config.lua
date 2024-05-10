@@ -9,7 +9,7 @@ M.defaults = {
   path = '~/die-schnecke.notes',
   max_items = 10,
   llama = {
-    model  = "GemmaOne",
+    model  = "codeqwen-lua",
     stream = true,
     port   = "11434"
   }

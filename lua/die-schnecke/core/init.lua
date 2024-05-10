@@ -27,6 +27,7 @@ local default_signal = {
   select_size = 4,
   preview_content = "",
   is_code = false,
+  is_ollama_visible = false,
   is_preview_visible = false,
 }
 
@@ -52,32 +53,35 @@ local create_renderer = function()
 end
 
 local options_list = {
-  n.option("Chat with " .. model_name, { id = "chat" }),
-  n.separator("Create"),
-  n.option("JSDoc", { id = "to_jsdoc" }),
-  n.option("README", { id = "to_readme" }),
-  n.separator("Format"),
-  n.option("Make this in TS", { id = "to_ts" }),
-  n.option("Make this in JS", { id = "to_js" }),
+  n.option("Chat", { id = "chat" }),
+  n.separator("Refactor"),
+  n.option("Suggest ways to improve code readability and efficiency", { id = "refactor_improve" }),
+  n.option("Convert to TypeScript", { id = "refactor_convert_to_ts" }),
+  n.separator("Create Docs"),
+  n.option("LuaDoc", { id = "create_luadoc" }),
+  n.option("JSDoc", { id = "create_jsdoc" }),
+  n.option("README", { id = "create_readme" }),
 }
 
-local create_signal = function()
-  return n.create_signal(default_signal)
+local create_signal = function(default_prompt)
+  local signal_config = vim.tbl_deep_extend("force", {}, default_signal, { selected_prompt = default_prompt })
+  return n.create_signal(signal_config)
 end
 
 local create_ui = function(renderer, bufnr, signal)
-  local is_chat = signal.selected_prompt:map(function(option) return not (option == "chat") end)
-  local is_preview_visible = signal.is_preview_visible:map(function(val) return not val end)
+  local is_chat_hidden = signal.selected_prompt:map(function(option) return not (option == "chat") end)
+  local is_ollama_hidden = signal.is_ollama_visible:negate()
+  local is_preview_hidden = signal.is_preview_visible:negate()
 
   local body = n.rows(
     n.text_input({
       id = "text_input",
       border_label = {
         icon = "",
-        text = "You, Sir",
+        text = "Chat with " .. model_name,
         align = "center"
       },
-      autofocus = true,
+      autofocus = false,
       -- autoresize = false,
       wrap = true,
       max_lines = 1,
@@ -86,35 +90,33 @@ local create_ui = function(renderer, bufnr, signal)
         signal.msg = value
       end,
 
-      hidden = is_chat
+      hidden = is_chat_hidden
     }),
     --       n.gap({ size = 2 }),
-    --       n.spinner({
-    --         padding = {
-    --           top = 1,
-    --         },
-    --         is_loading = signal.is_loading:negate(),
-    --         frames = spinner_formats.dots_6,
-    --       })
-    --     )
-    --   ),
+    -- n.spinner({
+    --   size = 1,
+    --   padding = {
+    --     top = 1,
+    --   },
+    --   is_loading = signal.is_loading:negate(),
+    --   -- frames = spinner_formats.dots_6,
+    -- })
 
     --   n.gap({ size = 1, hidden = signal.is_code }),
 
     n.select({
       id = "select",
-      autofocus = not is_chat,
       size = signal.select_size,
       border_label = {
         align = "center",
         icon = "",
         text = "Prompts"
       },
-
+      autofocus = true,
       selected = signal.selected_prompt,
 
       on_blur = function()
-        -- if is_preview_visible then
+        -- if is_ollma_visible then
         -- signal.select_size = 2
         -- else
         signal.select_size = 4
@@ -130,8 +132,15 @@ local create_ui = function(renderer, bufnr, signal)
       on_select = function(node)
         signal.selected_prompt = node.id
         if node.id == "chat" then
+          signal.is_preview_visible = false
+          renderer:set_size({ height = 8 })
+
           local input = renderer:get_component_by_id("text_input")
+
           input:focus()
+        else
+          renderer:set_size({ height = 20 })
+          signal.is_preview_visible = true
         end
       end,
 
@@ -164,19 +173,22 @@ local create_ui = function(renderer, bufnr, signal)
     --   max_lines = 2
     -- }),
 
-    -- n.paragraph({
-    --   id = "preview",
-    --   autofocus = true,
-    --   lines = signal.preview_content,
-    --   flex = 2,
-    --   border_label = {
-    --     text = Text("Preview", "NuiComponentsBorderLabel"),
-    --     icon = is_chat_visible and "󰭹" or "",
-    --     align = "center",
-    --   },
-    --   border_style = "rounded",
-    --   hidden = is_preview_visible
-    -- })
+    n.buffer({
+      id = "code_preview",
+      autofocus = true,
+      -- lines = signal.preview_content,
+      filetype = M.filetype,
+      flex = 1,
+      border_label = {
+        text = Text("Code Preview", "NuiComponentsBorderLabel"),
+        icon = "󰘦",
+        align = "center",
+      },
+      buf = bufnr,
+      border_style = "rounded",
+      hidden = is_preview_hidden
+    }),
+
     n.buffer({
       id = "ollama",
       autofocus = true,
@@ -185,12 +197,12 @@ local create_ui = function(renderer, bufnr, signal)
       buf = bufnr,
       autoscroll = true,
       border_label = {
-        text = Text("Preview", "NuiComponentsBorderLabel"),
-        icon = is_chat and "󰭹" or "",
+        text = Text("Ollama", "NuiComponentsBorderLabel"),
+        icon = is_chat_hidden and "" or "󰭹",
         align = "center",
       },
       border_style = "rounded",
-      hidden = is_preview_visible,
+      hidden = is_ollama_hidden,
       padding = { left = 1, right = 1 },
     })
   )
@@ -204,20 +216,24 @@ local runner = function(state, bufnr, winid)
   end
 
   print("󰜎 up")
-  -- P(state)
 
+  ollama.result_bufnr = bufnr
   ollama.prompt_winid = winid
 
-  api.nvim_buf_set_option(bufnr, 'bufhidden', 'wipe')    -- Wipe buffer when hidden
-  api.nvim_buf_set_option(bufnr, 'swapfile', false)      -- Disable swapfile for this buffer
-  -- api.nvim_buf_set_option(bufnr, 'modifiable', not M.is_chat)
-  api.nvim_buf_set_option(bufnr, 'filetype', M.filetype) -- make this buffer markdown
+  if state.selected_prompt == "chat" and state.msg ~= "" then
+    api.nvim_buf_set_option(bufnr, 'bufhidden', 'wipe')    -- Wipe buffer when hidden
+    api.nvim_buf_set_option(bufnr, 'swapfile', false)      -- Disable swapfile for this buffer
+    -- -- api.nvim_buf_set_option(bufnr, 'modifiable', not M.is_chat)
+    api.nvim_buf_set_option(bufnr, 'filetype', M.filetype) -- make this buffer markdown
 
-  -- TODO: msg should be the correct context when running with code
+    -- -- TODO: msg should be the correct context when running with code
 
-  -- if M.is_chat then
-  ollama.exec(string.gsub(state.msg, "\n", ""))
-  -- ollama.exec(M.signal:get_value().msg)
+    -- -- if M.is_chat then
+    ollama.exec(string.gsub(state.msg, "\n", ""))
+    -- ollama.exec(M.signal:get_value().msg)
+  else
+    P(state)
+  end
   -- else
   --   local val = M.signal:get_value().selected_prompt
   --   P(val)
@@ -239,14 +255,25 @@ local add_renderer_events = function(renderer, signal)
       key = { "<c-r>", "<D-CR>" },
       handler = function()
         local state = signal:get_value()
-        signal.is_preview_visible = true
 
-        renderer:set_size({ height = 20 })
+        if state.selected_prompt == "chat" then
+          signal.is_ollama_visible = true
+          signal.is_preview_visible = false
 
-        local ollama_root = renderer:get_component_by_id("ollama")
-        local bufnr = ollama_root.bufnr
-        local winid = ollama_root.winid
-        renderer:schedule(function() runner(state, bufnr, winid) end)
+          renderer:set_size({ height = 20 })
+
+          local ollama_root = renderer:get_component_by_id("ollama")
+
+          local bufnr = ollama_root.bufnr
+          local winid = ollama_root.winid
+          renderer:schedule(function() runner(state, bufnr, winid) end)
+        else
+          P(state)
+          local bufnr = api.nvim_create_buf(true, false)
+          ollama.result_bufnr = bufnr
+          local winid = utils.throw_to_left()
+          ollama.prompt_winid = winid
+        end
       end
     }
     -- {
@@ -281,12 +308,11 @@ local add_renderer_events = function(renderer, signal)
   })
 end
 
-local create_window = function()
+local create_window = function(default_prompt)
   local bufnr = api.nvim_create_buf(false, true)
-  ollama.result_bufnr = bufnr
 
   M.renderer = create_renderer()
-  local signal = create_signal()
+  local signal = create_signal(default_prompt)
   M.signal = signal
 
   local ui = create_ui(M.renderer, bufnr, signal)
@@ -299,37 +325,46 @@ M.init = function()
   ollama.run_llama_server()
 end
 
+M.chat_with_code = function()
+  M.filetype = vim.bo.filetype
+  local register = vim.fn.getreg('"')
+  -- Split the content into lines
+  local lines = {}
+  for line in register:gmatch("([^\n]*)\n?") do
+    table.insert(lines, line)
+  end
+
+  local default_prompt = "refactor_improve"
+  M.signal.selected_prompt = default_prompt --"refactor_improve"
+
+  create_window(default_prompt)
+  M.renderer:set_size({ height = 20 })
+
+  M.signal.is_preview_visible = true
+  M.signal.preview_content = string.gsub(register, "\n", "")
+
+  utils.write_to_buffer(lines)
+
+  -- local preview_code = M.renderer:get_component_by_id("code_preview")
+  -- previ
+
+  -- local bufnr = preview_code.bufnr
+
+
+  -- local visual_lines = utils.get_visual_selection() or {}
+end
+
 M.open = function()
   if M.is_open then
     return M.renderer:focus()
   end
+
   create_window()
 
-  -- if not with_selection then
-  --   create_window()
-  -- else
   --   -- TODO: code completion
   --   -- local code, ft = utils.get_code_before_cursor()
   --   -- print("Code before: " .. code)
   --   -- print("filetype: " .. ft)
-
-  --   -- TODO: code review
-  --   local visual_lines = utils.get_visual_selection() or {}
-
-  --   M.is_chat = false
-  --   M.filetype = vim.bo.filetype
-
-
-  --   -- FIXME: this is ugly
-  --   vim.defer_fn(function()
-  --     -- vim.cmd("set number")
-  --     api.nvim_buf_set_option(ollama.result_bufnr, "filetype", M.filetype)
-  --   end, 0)
-
-  --   utils.write_to_buffer(visual_lines)
-
-  -- api.nvim_buf_set_option(ollama.result_bufnr, 'modifiable', true)
-  -- end
 end
 
 return M

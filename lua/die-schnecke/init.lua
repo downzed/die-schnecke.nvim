@@ -21,6 +21,7 @@ M.setup = function(opts)
   local desc = 'Toggle Die Schnecke!'
 
   api.nvim_create_user_command('OpenDieSchnecke', function() core.open() end, { desc = desc })
+  api.nvim_create_user_command('OpenDieSchneckeWithSelectedCode', function() core.chat_with_code() end, { desc = desc })
   -- config.map("x", "<C-e>", '<cmd>lua require("die-schnecke").chat_with_code()<CR>',
   --   { noremap = true, silent = true })
 end

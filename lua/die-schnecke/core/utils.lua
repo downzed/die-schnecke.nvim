@@ -7,6 +7,18 @@ P = function(val)
   return val
 end
 
+R = function(plugin_name)
+  local plugin = package.loaded[plugin_name]
+  if plugin then
+    package.loaded[plugin_name] = nil
+    require(plugin_name)
+    vim.notify("Reloaded: " .. plugin_name)
+  else
+    vim.notify("Plugin not found: " .. plugin_name)
+  end
+end
+
+
 local M = {}
 
 M.get_visual_selection = function()
@@ -131,6 +143,7 @@ M.throw_to_left = function(bufnr)
   if bufnr then
     vim.api.nvim_win_set_buf(0, bufnr)
   end
+  return vim.api.nvim_get_current_win()
 end
 
 return M
