@@ -1,7 +1,6 @@
 local n = require("nui-components")
 local Line = require("nui.line")
 local Text = require("nui.text")
--- local spinner_formats = require("nui-components.utils.spinner-formats")
 
 local api = vim.api
 
@@ -360,11 +359,6 @@ M.open = function()
   end
 
   create_window("chat")
-
-  --   -- TODO: code completion
-  --   -- local code, ft = utils.get_code_before_cursor()
-  --   -- print("Code before: " .. code)
-  --   -- print("filetype: " .. ft)
 end
 
 return M
