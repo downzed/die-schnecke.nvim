@@ -339,8 +339,8 @@ local create_window = function(default_prompt)
   M.renderer:render(function() return ui end)
 end
 
-M.init = function()
-  ollama.run_llama_server()
+M.serve = function()
+  return ollama.run_llama_server()
 end
 
 M.chat_with_code = function()
@@ -353,7 +353,7 @@ M.chat_with_code = function()
   set_code_preview()
 end
 
-M.open = function()
+M.chat = function()
   if M.is_open then
     return M.renderer:focus()
   end
