@@ -1,5 +1,4 @@
 # Compiled Lua sources
-.busted
 luac.out
 .env
 # luarocks build files
@@ -42,4 +41,3 @@ luac.out
 
 # macOS
 .DS_Store
-

@@ -83,6 +83,11 @@ M.fetch_dir_items = function(path)
   return entries
 end
 
+
+--- get config by key
+---@param key string
+---@return table | any
+---@usage M.get_config("foo") -> table | any
 M.get_config = function(key)
   return config[key] or config.load()[key]
 end
