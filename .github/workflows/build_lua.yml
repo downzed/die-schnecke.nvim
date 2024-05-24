@@ -11,22 +11,15 @@ jobs:
     steps:
       - name: Check out
         uses: actions/checkout@v4.1.5
-
-      - name: Running Lua Busted
+      - name: Running Busted test suite
         uses: lunarmodules/busted@v2.2.0
-      - run: echo "Busting lua_spec files in the repository."
+      - run: echo "Busting lua_spec files"
 
   lint:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4.1.5
-        with:
-          fetch-depth: 0
-
-      - name: LuaCheck
-        uses: RagedUnicorn/action-luacheck@v1.0.0
-        env:
-          VALIDATE_ALL_CODEBASE: true
-          DEFAULT_BRANCH: "main"
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Luacheck Linter
+        uses: lunarmodules/luacheck@v1
+      - run: echo "Checking for lint errors"
