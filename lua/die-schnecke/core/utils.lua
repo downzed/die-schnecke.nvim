@@ -2,7 +2,7 @@ local plenary = require('plenary.scandir')
 local config = require('die-schnecke.core.config')
 local api = vim.api
 
-P = function(val)
+_G.P = function(val)
   print(vim.inspect(val))
   return val
 end

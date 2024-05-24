@@ -93,7 +93,7 @@ local set_code_preview = function()
 end
 
 local create_ui = function(renderer, signal)
-  local is_chat_hidden = signal.selected_prompt:map(function(option) return not (option == "chat") end)
+  local is_chat_hidden = signal.selected_prompt:map(function(option) return option ~= "chat" end)
   local is_ollama_hidden = signal.is_ollama_visible:negate()
   local is_preview_hidden = signal.is_preview_visible:negate()
 

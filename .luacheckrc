@@ -1,6 +1,6 @@
 return {
-  std = "min",
+  std = "max",
   codes = false,
   globals = { "vim" },
-  read_globals = { "P", "R" },
+  read_globals = { "unpack", "require", "P" },
 }
