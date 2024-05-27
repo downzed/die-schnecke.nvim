@@ -16,20 +16,22 @@ local get_is_model_exist = function(model)
   return false
 end
 
+---@func run_llama_server
+---@description Start ollama
+---@return string | nil
 M.run_llama_server = function()
   local port = utils.get_config("llama").port
   local ok = pcall(io.popen, "ollama serve > /dev/null 2>&1 &")
 
+  vim.notify("serving..", vim.log.levels.INFO)
   if not ok then
-    print("Failed to start ollama")
-    return
+    return "Failed to start ollama"
   end
 
   local response = vim.fn.systemlist("curl --silent --no-buffer http://localhost:" .. port .. "/api/tags")
 
   if not response or vim.tbl_isempty(response) then
-    print("ollama not running or no response received.. 😢")
-    return
+    return "ollama not running or no response received.. 😢"
   end
 
   local model_list = vim.fn.json_decode(response)
@@ -47,6 +49,8 @@ M.run_llama_server = function()
   end
 
   M.models = models
+  P(models)
+  return "Ollama is up and running 🎉"
 end
 
 local process_cmd_result = function(res)

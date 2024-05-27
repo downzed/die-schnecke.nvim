@@ -2,28 +2,14 @@ local plenary = require('plenary.scandir')
 local config = require('die-schnecke.core.config')
 local api = vim.api
 
-P = function(val)
+_G.P = function(val)
   print(vim.inspect(val))
   return val
 end
 
-R = function(plugin_name)
-  local plugin = package.loaded[plugin_name]
-  if plugin then
-    package.loaded[plugin_name] = nil
-    require(plugin_name)
-    vim.notify("Reloaded: " .. plugin_name)
-  else
-    vim.notify("Plugin not found: " .. plugin_name)
-  end
-end
-
-
 local M = {}
 
 M.get_visual_selection = function()
-  -- this will exit visual mode
-  -- use 'gv' to reselect the text
   local _, csrow, cscol, cerow, cecol
   local mode = vim.fn.mode()
   if mode == "v" or mode == "V" or mode == "" then
@@ -71,7 +57,6 @@ M.get_code_before_cursor = function()
   local filetype = vim.bo.filetype
   local code_before_cursor = current_line:sub(1, cursor_col)
   return code_before_cursor, filetype
-  -- TODO: needed filetype, the whole file as pre-context
 end
 
 
@@ -98,6 +83,11 @@ M.fetch_dir_items = function(path)
   return entries
 end
 
+
+--- get config by key
+---@param key string
+---@return table | any
+---@usage M.get_config("foo") -> table | any
 M.get_config = function(key)
   return config[key] or config.load()[key]
 end
@@ -124,12 +114,13 @@ M.write_to_buffer = function(lines)
 
   local text = table.concat(lines or {}, "\n")
 
-  api.nvim_buf_set_option(bufnr, "modifiable", true)
+  api.nvim_set_option_value("modifiable", true, { buf = bufnr })
+
   api.nvim_buf_set_text(bufnr, last_row - 1, last_col,
     last_row - 1, last_col, vim.split(text, "\n"))
 
   -- Move the cursor to the end of the new lines
-  api.nvim_buf_set_option(bufnr, "modifiable", false)
+  api.nvim_set_option_value("modifiable", false, { buf = bufnr })
 end
 
 M.throw_to_left = function(bufnr)
@@ -141,9 +132,9 @@ M.throw_to_left = function(bufnr)
 
   -- If a buffer ID is provided, open that buffer in the new window
   if bufnr then
-    vim.api.nvim_win_set_buf(0, bufnr)
+    api.nvim_win_set_buf(0, bufnr)
   end
-  return vim.api.nvim_get_current_win()
+  return api.nvim_get_current_win()
 end
 
 

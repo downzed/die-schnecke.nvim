@@ -10,7 +10,7 @@ Meaning:
 1. The name comes from German, which means "**The Snail**".
 2. It represents my learning/developing process (and the fact I recently moved to Berlin), specifically for this plugin. (Not rushing, but learning).
 
-Neovim plugin designed to enhance your coding experience by integrating with the Ollama service for code completion, 
+Neovim plugin designed to enhance your coding experience by integrating with the Ollama service for code completion,
 refactoring, and documentation generation.
 
 Tested with Ollama models: `llama3:instruct`, `codellama:7b-code` and `dolphincoder:15b-starcoder2`
@@ -84,7 +84,7 @@ for example:
     - Specific model for specific "task"
     - Function calling
 
-## Known Issues 
+## Known Issues
 - win+buf regenaration
 - running jobs of the ollama server in the background
 
@@ -95,4 +95,3 @@ Contributions are welcome! Please feel free to submit a pull request or open an 
 ## License
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
-
