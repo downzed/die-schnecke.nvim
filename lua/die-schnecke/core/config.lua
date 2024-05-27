@@ -1,23 +1,32 @@
-local M = {}
+--- Default configuration settings.
+-- @module M.defaults
 
-M.defaults = {
-  header = "Welcome to Die Schnecke!",
-  mappings = {
-    ['<leader>xq'] = 'close()',
-    ['<leader>xx'] = 'open()',
-  },
+--- Path to the notes file.
+-- @field path
+-- @string path The default file path where notes or data will be stored.
+-- @default ~/die-schnecke.notes
+
+--- Maximum number of items.
+-- @field max_items
+-- @int max_items -- The maximum number of items to handle or display.
+-- @default 10
+
+local M = {}
+M.default_config = {
   path = '~/die-schnecke.notes',
   max_items = 10,
   llama = {
-    model  = "compy", -- "codeqwen-lua",
+    model  = "compy",
     stream = true,
     port   = "11434"
   },
 }
 
+---@param user_config table | nil
+---@return table config
 M.load = function(user_config)
   user_config = user_config or {}
-  local config = vim.tbl_deep_extend("force", {}, M.defaults, user_config)
+  local config = vim.tbl_deep_extend("force", {}, M.default_config, user_config)
   M.config = config
   return config
 end

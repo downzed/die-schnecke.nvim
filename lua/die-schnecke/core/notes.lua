@@ -1,9 +1,11 @@
 local utils = require("die-schnecke.core.utils")
-local M = { data = {} }
+local M = {}
 
 M.load = function()
   local notes_dir = vim.fn.expand(utils.get_config("path"))
   local items = utils.fetch_dir_items(notes_dir)
+
+  M.data = {}
 
   for _, item in ipairs(items) do
     if item.type == "file" then

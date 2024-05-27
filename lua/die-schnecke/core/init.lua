@@ -1,7 +1,6 @@
 local n = require("nui-components")
 local Line = require("nui.line")
 local Text = require("nui.text")
--- local spinner_formats = require("nui-components.utils.spinner-formats")
 
 local api = vim.api
 
@@ -94,7 +93,7 @@ local set_code_preview = function()
 end
 
 local create_ui = function(renderer, signal)
-  local is_chat_hidden = signal.selected_prompt:map(function(option) return not (option == "chat") end)
+  local is_chat_hidden = signal.selected_prompt:map(function(option) return option ~= "chat" end)
   local is_ollama_hidden = signal.is_ollama_visible:negate()
   local is_preview_hidden = signal.is_preview_visible:negate()
 
@@ -340,8 +339,8 @@ local create_window = function(default_prompt)
   M.renderer:render(function() return ui end)
 end
 
-M.init = function()
-  ollama.run_llama_server()
+M.serve = function()
+  return ollama.run_llama_server()
 end
 
 M.chat_with_code = function()
@@ -354,17 +353,12 @@ M.chat_with_code = function()
   set_code_preview()
 end
 
-M.open = function()
+M.chat = function()
   if M.is_open then
     return M.renderer:focus()
   end
 
   create_window("chat")
-
-  --   -- TODO: code completion
-  --   -- local code, ft = utils.get_code_before_cursor()
-  --   -- print("Code before: " .. code)
-  --   -- print("filetype: " .. ft)
 end
 
 return M

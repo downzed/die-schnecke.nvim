@@ -16,4 +16,3 @@
  * Include syntax highlighting based on file type or Markdown formatting
  * Open a chat buffer alongside the text editor to discuss the code (another output buffer)
  * Syntax highlight the chat input and output in this new buffer, just like we do with code!
-
