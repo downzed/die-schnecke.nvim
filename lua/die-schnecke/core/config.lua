@@ -38,6 +38,4 @@ M.set_notes_dir = function()
   end
 end
 
-M.map = vim.keymap.set
-
 return M
