@@ -211,19 +211,15 @@ local create_ui = function(renderer, signal)
 end
 
 local runner = function(state, bufnr, winid, is_chat)
-  if not bufnr then
-    vim.notify("why DaFaque??", vim.log.levels.ERROR)
-    return
-  end
-
   print("󰜎 up")
   print(M.filetype)
   ollama.result_bufnr = bufnr
   ollama.prompt_winid = winid
 
-  api.nvim_buf_set_option(bufnr, 'bufhidden', 'wipe')    -- Wipe buffer when hidden
-  api.nvim_buf_set_option(bufnr, 'swapfile', false)      -- Disable swapfile for this buffer
-  api.nvim_buf_set_option(bufnr, 'filetype', M.filetype) -- make this buffer markdown
+  local opt = { buf = bufnr }
+  api.nvim_set_option_value('bufhidden', 'wipe', opt)
+  api.nvim_set_option_value('swpafile', false, opt)
+  api.nvim_set_option_value('filetype', M.filetype, opt)
 
   local prompt = utils.switch(state.selected_prompt, {
     ["chat"] = function()
